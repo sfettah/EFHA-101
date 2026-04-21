@@ -44,6 +44,7 @@ type View = 'home' | 'setup' | 'game' | 'analysis' | 'history';
 interface ScoreEntry {
   gameScore: number;
   penaltyScore: number;
+  okeyCount: number;
 }
 
 interface Player {
@@ -314,6 +315,7 @@ const GameView = ({
               <th className="p-4 text-left text-xs font-black text-[#6C757D] uppercase tracking-widest border-r border-[#E9ECEF]">Oyuncu / Takım</th>
               <th className="p-4 text-center text-xs font-black text-[#6C757D] uppercase tracking-widest border-r border-[#E9ECEF]">Oyun Puanı</th>
               <th className="p-4 text-center text-xs font-black text-[#DC3545] uppercase tracking-widest border-r border-[#E9ECEF]">Ceza Puanı</th>
+              <th className="p-4 text-center text-xs font-black text-[#007BFF] uppercase tracking-widest border-r border-[#E9ECEF]">Okey</th>
               <th className="p-4 text-center text-xs font-black text-[#1A1A1A] uppercase tracking-widest">Toplam</th>
             </tr>
           </thead>
@@ -347,6 +349,23 @@ const GameView = ({
                     className="w-full p-3 bg-transparent text-center font-bold text-[#DC3545] outline-none focus:bg-white transition-all"
                   />
                 </td>
+                <td className="p-2 border-r border-[#E9ECEF]">
+                   <div className="flex justify-center gap-1">
+                     {[0, 1, 2].map(count => (
+                        <button
+                          key={count}
+                          onClick={() => onUpdateScore(player.id, currentRound, 'okeyCount', count.toString())}
+                          className={`w-7 h-7 rounded text-[9px] font-black border transition-all ${
+                            (player.scores[currentRound].okeyCount || 0) === count
+                              ? 'bg-[#007BFF] border-[#007BFF] text-white shadow-sm'
+                              : 'bg-white border-[#E9ECEF] text-[#6C757D] hover:border-[#ADB5BD]'
+                          }`}
+                        >
+                          {count}
+                        </button>
+                     ))}
+                   </div>
+                </td>
                 <td className="p-4 text-center font-black text-lg">
                   {player.scores[currentRound].gameScore + player.scores[currentRound].penaltyScore}
                 </td>
@@ -360,6 +379,12 @@ const GameView = ({
       <div className="md:hidden space-y-4">
         <div className="flex items-center justify-between px-2">
           <h3 className="text-lg font-bold">El {currentRound + 1} Girişi</h3>
+          <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
+            <Zap size={12} className="text-amber-500" fill="currentColor" />
+            <span className="text-[10px] font-bold text-amber-700">
+              Okey Takibi: {players.reduce((acc, p) => acc + (p.scores[currentRound].okeyCount || 0), 0)} / 2
+            </span>
+          </div>
           {currentRound === MAX_ROUNDS - 1 && (
             <button 
               onClick={onFinish}
@@ -410,6 +435,25 @@ const GameView = ({
                     placeholder="0"
                     className="w-full p-4 bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl focus:border-[#DC3545] outline-none transition-all text-center font-black text-xl text-[#DC3545]"
                   />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-[10px] font-bold text-[#6C757D] uppercase tracking-widest">Bu Eldeki Okeyler</span>
+                <div className="flex gap-2">
+                  {[0, 1, 2].map((count) => (
+                    <button
+                      key={count}
+                      onClick={() => onUpdateScore(player.id, currentRound, 'okeyCount', count.toString())}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-black transition-all border-2 ${
+                        (player.scores[currentRound].okeyCount || 0) === count
+                          ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
+                          : 'bg-white border-[#E9ECEF] text-[#6C757D]'
+                      }`}
+                    >
+                      {count}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -599,7 +643,7 @@ const AnalysisView = ({ analysisData, totals, players, historyDate, onBack }: {
         </div>
 
         {/* C, D, E, F) Advanced Stats Grid */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {analysisData.playerStats.map((stat: any) => (
             <div key={stat.name} className="bg-white p-4 rounded-lg border-2 border-[#E9ECEF] shadow-sm space-y-3">
               <div className="flex items-center gap-2 border-b border-[#F1F3F5] pb-2">
@@ -661,6 +705,15 @@ const AnalysisView = ({ analysisData, totals, players, historyDate, onBack }: {
                     <span className="text-[8px] font-bold uppercase tracking-widest">Toplam Ceza</span>
                   </div>
                   <div className="text-base font-black text-[#DC3545]">{stat.totalPenalty}</div>
+                </div>
+
+                <div className="p-2 bg-[#F8F9FA] rounded-md border border-[#E9ECEF]">
+                  <div className="flex items-center gap-1.5 text-[#007BFF] mb-0.5">
+                    <Zap size={10} />
+                    <span className="text-[8px] font-bold uppercase tracking-widest">Okey Yüzdesi</span>
+                  </div>
+                  <div className="text-base font-black text-[#007BFF]">%{stat.okeyPercentage}</div>
+                  <div className="text-[9px] opacity-50">{stat.totalOkeys} Okey</div>
                 </div>
               </div>
             </div>
@@ -823,7 +876,7 @@ export default function App() {
       id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2),
       name: '',
       color: PLAYER_COLORS[mode][i],
-      scores: Array.from({ length: MAX_ROUNDS }, () => ({ gameScore: 0, penaltyScore: 0 }))
+      scores: Array.from({ length: MAX_ROUNDS }, () => ({ gameScore: 0, penaltyScore: 0, okeyCount: 0 }))
     }));
     setPlayers(initialPlayers);
     setInitialDealerIndex(Math.floor(Math.random() * count));
@@ -896,7 +949,7 @@ export default function App() {
         id: p.id,
         color: p.color,
         score: p.scores[roundIdx].gameScore + p.scores[roundIdx].penaltyScore,
-        hasScore: p.scores[roundIdx].gameScore !== 0 || p.scores[roundIdx].penaltyScore !== 0
+        hasScore: p.scores[roundIdx].gameScore !== 0 || p.scores[roundIdx].penaltyScore !== 0 || p.scores[roundIdx].okeyCount !== 0
       }));
 
       const isPlayed = roundScores.some(s => s.hasScore);
@@ -1013,6 +1066,9 @@ export default function App() {
       });
 
       const totalPenalty = p.scores.reduce((acc, curr) => acc + curr.penaltyScore, 0);
+      const totalOkeys = p.scores.reduce((acc, curr) => acc + (curr.okeyCount || 0), 0);
+      const totalOkeysInGame = playedRounds.length * 2;
+      const okeyPercentage = totalOkeysInGame > 0 ? ((totalOkeys / totalOkeysInGame) * 100).toFixed(1) : '0';
 
       return {
         name: p.name,
@@ -1028,7 +1084,9 @@ export default function App() {
         pressureAvg: pressureAvg.toFixed(1),
         winFrequency,
         comebackRounds,
-        totalPenalty
+        totalPenalty,
+        totalOkeys,
+        okeyPercentage
       };
     });
 
